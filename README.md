@@ -1,24 +1,38 @@
 # Вопросы к дипломной работе
 
-## 1. Правильно ли я понял порядок действий создания окружений?
-1) Создаём инфраструктуру в двух (`stage` и `prod`) окружениях. (`terraform`).
-2) Разворачиваем `k8s` кластера, с одним `namespace`, например `netology`, в каждом из окружений.
+## Вопрос 1
+День добрый. Все таки пришлось развернуть k8s кластер как SaaS, т.к. `Ingress controller for Managed Service for Kubernetes` служит только для SaaS решения, а для кастомного кластера найти что-то подобное в `YC` не удалось.
+Но вопрос не об этом. Развернул систему мониторинга с помощью пакета `kube-prometheus`. Через `kubectl --namespace monitoring port-forward svc/grafana 3000` доступ к grafana имеется. Но через `ingress`, ссылающийся на тот же сервис, зайти на grafana не получается (504 Gateway Time-out).
+`ingress-nginx-controller` установлен и получил внешний ip адрес (для чистоты эксперимента на него было повешено доменное имя `grafana.netology.asicminer8.com`).
 
-## 2. Не получается развернуть `ingress-nginx-controller`
-`ingress-nginx-controller` не получает внешний адрес, состояние `<pending>`.
-В документации сказано - generally, this is because it doesn't support services of type LoadBalancer.
+Если тот же `ingress` изменить на работу с моим кастомным приложением, то маршрутизации происходит без проблем. 
+Пример настройки на работу с кастомным приложением (`webapp`) закомментирован.
 
-```shell
-kubectl get service ingress-nginx-controller --namespace=ingress-nginx
-
-# NAME                       TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)                      AGE
-# ingress-nginx-controller   LoadBalancer   10.233.9.174   <pending>     80:32685/TCP,443:32410/TCP   3m37s
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monitoring
+  namespace: monitoring
+#  namespace: webapp
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: grafana.netology.asicminer8.com
+    http:
+      paths:
+      - backend:
+          service:
+            name: monitoring
+#            name: webapp
+            port:
+              name: http
+        path: /
+        pathType: Prefix
 ```
 
-При создании `service` с типом `LoadBalancer` та же проблема.
-```shell
-kubectl get services -n webapp
+Сделано всё согласно документации и идей почти не осталось.
 
-# NAME     TYPE           CLUSTER-IP    EXTERNAL-IP   PORT(S)                      AGE
-# webapp   LoadBalancer   10.233.23.8   <pending>     80:31443/TCP,443:30069/TCP   7m44s
-```
+## Вопрос 2
+Для `jenkins`, как для мастера так и для агентов, создавать отдельные инcтанцы или лучше поместить их в кластер k8s?
+Больше склоняюсь к созданию отдельных инстанцов, но все таки хотелось бы уточнить что есть лучше для продакшена.
