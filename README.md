@@ -23,7 +23,7 @@ spec:
       paths:
       - backend:
           service:
-            name: monitoring
+            name: grafana
 #            name: webapp
             port:
               name: http
